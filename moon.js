@@ -1,94 +1,103 @@
-var camera, scene, texture, particleLight, renderer;
-var moons = [];
+///
+/// gitmoon - A demo projects for segfault-trainings Git workshop
+///
+/// Licensed under Creative Commons Attribution Share Alike 4.0 International
+/// See https://github.com/segfault-trainings/gitworkshop/blob/master/LICENSE
+///
+/// NOTE: this demo must be served from a local web server,
+///       due to image loading and CORS restrictions. E.g.:
+///           python -m http.server
+///
+"use strict";
 
-init();
-moon( "green" );
-animate();
+// context for all "global" three.js objects
+let ctx = {
+    scene: new THREE.Scene(),
+    camera: new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000),
+    renderer: new THREE.WebGLRenderer({ antialias: true }),
+    textureLoader: new THREE.TextureLoader(),
+    moons: [],
+};
 
-function moon( color )
-{
-  m = new THREE.MeshPhongMaterial( { map: texture,
-    bumpMap: texture, bumpScale: 2, color: color,
-    specular: 0x333333, shininess: 10, metal: true, shading: THREE.SmoothShading } );
-  sphere = new THREE.Mesh( new THREE.SphereBufferGeometry( 70, 32, 16 ), m );
-  pos = moons.length +1
-  sphere.position.x = ( pos % 4 ) * 200 - 200;
-  sphere.position.z = Math.floor( pos / 4 ) * 200 - 200;
-  moons.push( sphere );
-  scene.add( sphere );
+// create moons
+new Moon("green");
+
+// Function to setup the scene for our awesome moons :)
+setup();
+function setup() {
+    // setup the scene, camera and renderer
+    ctx.renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( ctx.renderer.domElement );
+    new THREE.OrbitControls( ctx.camera, ctx.renderer.domElement );
+    ctx.camera.position.z = 10;
+
+    // set space background
+    var spaceGeometry = new THREE.SphereGeometry(500, 50, 50);
+    var spaceMaterial = new THREE.MeshPhongMaterial({
+      map: ctx.textureLoader.load("space.png"),
+      side: THREE.DoubleSide,
+      shininess: 0
+    });
+    var space = new THREE.Mesh(spaceGeometry, spaceMaterial);
+    ctx.scene.add(space);
+
+    // create an ambient lighting
+    let ambientLight = new THREE.AmbientLight(0x888888)
+    ctx.scene.add(ambientLight);
+
+    // create a directional lighting
+    let directionalLight = new THREE.DirectionalLight(0xFDFCF0, 1)
+    directionalLight.position.set(20, 10, 20)
+    ctx.scene.add(directionalLight);
+
+    // create a renderer for our scene
+    let render = function() {
+        ctx.moons.forEach(function(moon, i) {
+            // rotate the moon on the X- and Y-Axis
+            moon.rotation.x += 0.005;
+            moon.rotation.y += 0.005;
+
+            // position the moon according to its index in the moon-registry
+            moon.position.x = -5 * i;
+            moon.position.z = -5 * i;
+        });
+
+	ctx.renderer.render(ctx.scene, ctx.camera);
+        requestAnimationFrame(render);
+    };
+    requestAnimationFrame(render);
+};
+
+// Function to create a new moon on the scene
+function Moon(color) {
+    // create the moon gemoetry
+    let geometry = new THREE.SphereGeometry(2, 50, 50);
+    // load moon textures
+    //let moonTexture = ctx.textureLoader.load("moon.jpg");
+    let moonTexture = ctx.textureLoader.load("moon.jpg");
+    let moonDisplacementMap = ctx.textureLoader.load("moon_displacement.jpg");
+    // create the moon material
+    let material = new THREE.MeshPhongMaterial({
+        color: color,
+        map: moonTexture,
+        displacementMap: moonDisplacementMap,
+        displacementScale: 0.06,
+        bumpMap: moonDisplacementMap,
+        bumpScale: 0.04,
+        specular: 0x333333,
+        shininess: 25,
+    });
+
+    let moon = new THREE.Mesh(geometry, material);
+    ctx.moons.push(moon);
+    ctx.scene.add(moon);
+    return moon;
+};
+
+window.addEventListener("resize", onWindowResize, false);
+
+function onWindowResize() {
+    ctx.camera.aspect = window.innerWidth / window.innerHeight;
+    ctx.camera.updateProjectionMatrix();
+    ctx.renderer.setSize(window.innerWidth, window.innerHeight);
 }
-
-function init( )
-{
-  // Container
-  container = document.createElement( 'div' );
-  document.body.appendChild( container );
-
-  // Camera
-  camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 2000 );
-  camera.position.set( 0, 200, 0 );
-  scene = new THREE.Scene();
-
-  // Texture
-  texture = THREE.ImageUtils.loadTexture( "moon_1024.jpg" );
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.anisotropy = 16;
-
-  // Lights
-  particleColor = "white";
-  particleLight = new THREE.Mesh( new THREE.SphereBufferGeometry( 4, 8, 8 ),
-                                  new THREE.MeshBasicMaterial( { color: particleColor } ));
-  scene.add( particleLight );
-  scene.add( new THREE.AmbientLight( 0xa0a0a0, 5 ));
-  var directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
-  directionalLight.position.set( 1, 1, 1 ).normalize();
-  scene.add( directionalLight );
-  pointLightColor = "white";
-  var pointLight = new THREE.PointLight( pointLightColor, 2, 800 );
-  particleLight.add( pointLight );
-
-  // Render
-  renderer = new THREE.WebGLRenderer( { antialias: true } );
-  renderer.setClearColor( 0x000000 );
-  renderer.setPixelRatio( window.devicePixelRatio );
-  renderer.setSize( window.innerWidth, window.innerHeight );
-  renderer.sortObjects = true;
-  container.appendChild( renderer.domElement );
-  renderer.gammaInput = true;
-  renderer.gammaOutput = true;
-
-  // Resize
-  window.addEventListener( 'resize', onWindowResize, false );
-}
-
-function onWindowResize()
-{
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize( window.innerWidth, window.innerHeight );
-}
-
-function animate()
-{
-  requestAnimationFrame( animate );
-  render();
-}
-
-function render()
-{
-  var timer = Date.now() * 0.00025;
-  camera.position.x = Math.cos( timer ) * 800;
-  camera.position.z = Math.sin( timer ) * 800;
-  camera.lookAt( scene.position );
-
-  // make the moons spin
-  for( var i = 0, l = moons.length; i < l; i ++ )
-    moons[i].rotation.y += 0.005;
-
-  particleLight.position.x = Math.sin( timer * 7 ) * 300;
-  particleLight.position.y = Math.cos( timer * 5 ) * 400;
-  particleLight.position.z = Math.cos( timer * 3 ) * 300;
-
-  renderer.render( scene, camera );
-}
-
